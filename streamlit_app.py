@@ -165,7 +165,7 @@ if first_name and last_name and dob:
         st.info("To consult further with an Astrologer/Numerologist regarding the generated birth chart, click on the given 'Chat On WhatsApp' button to connect and consult.")
         st.markdown("""
         <a aria-label="Chat on WhatsApp" href="https://wa.me/917205467646?text=Namaste%2C%20I%20need%20to%20consult%20regarding%20my%20Birth%20Chart">
-        <img alt="Chat on WhatsApp" src="https://w7.pngwing.com/pngs/887/556/png-transparent-whatsapp-click-to-chat-button.png" />
+        <img alt="Chat on WhatsApp" src="https://w7.pngwing.com/pngs/887/556/png-transparent-whatsapp-click-to-chat-button.png" width="150" height="auto"/>
         </a>
         """, unsafe_allow_html=True)
 
