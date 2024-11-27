@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 from io import StringIO
 
+# Set page configuration
+st.set_page_config(page_title="Get your free Birth Chart", layout="centered", page_icon='🌟')
+
 # Function to calculate Driver value
 def calculate_driver(day):
     return sum(map(int, str(day)))
@@ -78,8 +81,8 @@ def display_color_coded_grid(grid):
     return pd.DataFrame(styled_data)
 
 # Streamlit App Layout
-st.title("🌟 Enhanced Lo Shu Grid Numerology Calculator 🌟")
-st.write("Discover your personalized Lo Shu Grid with interpretations and insights!")
+st.title("🌟 Birth Chart Generator using Lo Shu Grid 🌟")
+st.write("Generate your Birth Chart using Lo Shu Grid with interpretations and insights!")
 
 # Input: Full Name
 first_name = st.text_input("Enter your First Name:", placeholder="e.g., Mohan")
@@ -88,9 +91,14 @@ last_name = st.text_input("Enter your Last Name:", placeholder="e.g., Kumar")
 # Input: Date of Birth
 dob = st.text_input("Enter your Date of Birth (DD-MM-YYYY):", placeholder="e.g., 25-11-1987")
 #dob = st.date_input('Enter your Date of Birth',value="default_value_today")
+# Input: Birth Time
+birth_time = st.time_input('Enter your Birth Time (HH:MM:SS)')
+#birth_time = st.text_input("Enter your Birth Time (HH:MM:SS):", placeholder="e.g., 10:45:00")
+
 
 # Input: Gender
 gender = st.radio("Select your Gender:", ["Male", "Female", "NA"], index=2)
+st.image("data/images/lo-Shu-Grid-Numbers-with-planets.png", use_container_width="auto", caption="Lo Shu Grid with Planets", output_format="auto")
 
 if first_name and last_name and dob:
     try:
@@ -113,7 +121,6 @@ if first_name and last_name and dob:
 
         if gender == "NA":
             st.warning("Gender not specified. Kunvar value cannot be calculated. Please provide Male or Female.")
-
         # Generate Lo Shu Grid
         grid = generate_lo_shu_grid(dob, driver, conductor, kunvar)
 
@@ -155,6 +162,12 @@ if first_name and last_name and dob:
         ] + [{"Attribute": f"Number {num}", "Value": count} for num, count in grid.items()])
 
         st.table(final_chart)
+        st.info("To consult further with an Astrologer/Numerologist regarding the generated birth chart, click on the given 'Chat On WhatsApp' button to connect and consult.")
+        st.markdown("""
+        <a aria-label="Chat on WhatsApp" href="https://wa.me/917205467646?text=Namaste%2C%20I%20need%20to%20consult%20regarding%20my%20Birth%20Chart">
+        <img alt="Chat on WhatsApp" src="https://predictme.streamlit.app/data/images/whatsapp_button.png" />
+        </a>
+        """, unsafe_allow_html=True)
 
         # Downloadable Report
         csv = StringIO()
