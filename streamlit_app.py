@@ -29,28 +29,57 @@ def calculate_kunvar(year, gender):
     return kunvar
 
 # Function to generate Lo Shu Grid
-def generate_lo_shu_grid(dob):
+def generate_lo_shu_grid(dob, driver, conductor, kunvar):
     digits = [int(char) for char in dob if char.isdigit()]
+    digits.append(driver)
+    digits.append(conductor)
+    digits.append(kunvar)
     grid = {num: digits.count(num) for num in range(1, 10)}
     return grid
 
-# Function to display Final Lo Shu Grid with Driver, Conductor, Kunvar
-def display_final_grid(grid, driver, conductor, kunvar):
+# Function to generate interpretations
+def number_interpretations():
+    return {
+        1: "Leadership, independence, ambition, and self-confidence.",
+        2: "Cooperation, sensitivity, and diplomacy.",
+        3: "Creativity, joy, and social interaction.",
+        4: "Practicality, stability, and responsibility.",
+        5: "Freedom, adventure, and adaptability.",
+        6: "Love, family, and nurturing.",
+        7: "Spirituality, introspection, and analysis.",
+        8: "Material success, authority, and power.",
+        9: "Compassion, humanitarianism, and selflessness.",
+    }
+
+# Function to display color-coded grid
+def display_color_coded_grid(grid):
+    colors = {
+        "missing": "background-color: #f8d7da; color: #721c24;",  # Light red for missing numbers
+        "repeated": "background-color: #d4edda; color: #155724;",  # Light green for repeated numbers
+        "normal": "",  # Default style
+    }
     lo_shu_layout = [
         [4, 9, 2],
         [3, 5, 7],
         [8, 1, 6]
     ]
-    table = []
+    styled_data = []
     for row in lo_shu_layout:
-        table.append([f"{num}: {grid[num]}" for num in row])
-    # Append Driver, Conductor, Kunvar at the bottom
-    table.append([f"Driver: {driver}", f"Conductor: {conductor}", f"Kunvar: {kunvar if kunvar is not None else 'N/A'}"])
-    return pd.DataFrame(table)
+        styled_row = []
+        for num in row:
+            if grid[num] == 0:
+                style = colors["missing"]
+            elif grid[num] > 1:
+                style = colors["repeated"]
+            else:
+                style = colors["normal"]
+            styled_row.append(f'<div style="{style}">{num}: {grid[num]}</div>')
+        styled_data.append(styled_row)
+    return pd.DataFrame(styled_data)
 
 # Streamlit App Layout
 st.title("🌟 Enhanced Lo Shu Grid Numerology Calculator 🌟")
-st.write("Discover your personalized Lo Shu Grid Birth Chart, Driver, Conductor, and Kunvar values!")
+st.write("Discover your personalized Lo Shu Grid with interpretations and insights!")
 
 # Input: Full Name
 first_name = st.text_input("Enter your First Name:", placeholder="e.g., Mohan")
@@ -58,6 +87,7 @@ last_name = st.text_input("Enter your Last Name:", placeholder="e.g., Kumar")
 
 # Input: Date of Birth
 dob = st.text_input("Enter your Date of Birth (DD-MM-YYYY):", placeholder="e.g., 25-11-1987")
+#dob = st.date_input('Enter your Date of Birth',value="default_value_today")
 
 # Input: Gender
 gender = st.radio("Select your Gender:", ["Male", "Female", "NA"], index=2)
@@ -85,7 +115,7 @@ if first_name and last_name and dob:
             st.warning("Gender not specified. Kunvar value cannot be calculated. Please provide Male or Female.")
 
         # Generate Lo Shu Grid
-        grid = generate_lo_shu_grid(dob)
+        grid = generate_lo_shu_grid(dob, driver, conductor, kunvar)
 
         # Display Full Name
         st.write(f"### Full Name: {full_name}")
@@ -97,8 +127,21 @@ if first_name and last_name and dob:
             st.write(f"### Your Kunvar Value: {kunvar}")
 
         # Display Lo Shu Grid
-        st.write("### Your Lo Shu Grid:")
-        st.table(display_final_grid(grid, driver, conductor, kunvar))
+        st.write("### Your Lo Shu Grid (Color-Coded):")
+        styled_grid = display_color_coded_grid(grid)
+        st.markdown(styled_grid.to_html(escape=False, index=False, header=False), unsafe_allow_html=True)
+
+        # Interpretations for Individual Numbers
+        st.write("### Interpretations for Individual Numbers:")
+        interpretations = number_interpretations()
+        for num, interpretation in interpretations.items():
+            count = grid[num]
+            if count == 0:
+                st.write(f"**{num} (Missing):** {interpretation}")
+            elif count > 1:
+                st.write(f"**{num} (Repeated {count} times):** {interpretation}")
+            else:
+                st.write(f"**{num} (Present):** {interpretation}")
 
         # Final Birth Chart
         st.write("### Final Birth Chart:")
