@@ -12,7 +12,7 @@ import sqlite3
 st.set_page_config(page_title="Get your free Birth Chart", layout="centered", page_icon='🌟')
 ###############################################################
 # Function to generate and download the PDF
-def generate_pdf(full_name, dob, gender, driver, conductor, kunvar, grid):
+def generate_pdf(full_name, dob, gender, driver, conductor, kuaa, grid):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
 
@@ -36,7 +36,7 @@ def generate_pdf(full_name, dob, gender, driver, conductor, kunvar, grid):
         ["Gender", gender],
         ["Driver Value", driver],
         ["Conductor Value", conductor],
-        ["Kunvar Value", kunvar if kunvar is not None else "Not Available"],
+        ["kuaa Value", kuaa if kuaa is not None else "Not Available"],
     ]
     for num, count in grid.items():
         data.append([f"Number {num}", count])
@@ -122,27 +122,27 @@ def calculate_conductor(dob):
         digits = [sum(map(int, str(sum(digits))))]
     return digits[0]
 
-# Function to calculate Kunvar value
-def calculate_kunvar(year, gender):
+# Function to calculate kuaa value
+def calculate_kuaa(year, gender):
     if gender == "NA":
-        return None  # Cannot calculate Kunvar for unspecified gender
+        return None  # Cannot calculate kuaa for unspecified gender
     year_sum = sum(map(int, str(year)))
     while year_sum >= 10:
         year_sum = sum(map(int, str(year_sum)))
     if gender == "Male":
-        kunvar = 11 - year_sum
+        kuaa = 11 - year_sum
     elif gender == "Female":
-        kunvar = 4 + year_sum
-    while kunvar >= 10:
-        kunvar = sum(map(int, str(kunvar)))
-    return kunvar
+        kuaa = 4 + year_sum
+    while kuaa >= 10:
+        kuaa = sum(map(int, str(kuaa)))
+    return kuaa
 
 # Function to generate Lo Shu Grid
-def generate_lo_shu_grid(dob, driver, conductor, kunvar):
+def generate_lo_shu_grid(dob, driver, conductor, kuaa):
     digits = [int(char) for char in dob if char.isdigit()]
     digits.append(driver)
     digits.append(conductor)
-    digits.append(kunvar)
+    digits.append(kuaa)
     grid = {num: digits.count(num) for num in range(1, 10)}
     return grid
 
@@ -209,7 +209,7 @@ phone_number = st.text_input("Enter your Phone Number:", placeholder="e.g., +91-
 
 # Input: Gender
 gender = st.radio("Select your Gender:", ["Male", "Female", "NA"], index=2)
-#st.image("data/images/lo-Shu-Grid-Numbers-with-planets.png", use_container_width="auto", caption="Lo Shu Grid with Planets", output_format="auto")
+st.image("data/images/lo-Shu-Grid-Numbers-with-planets.png", use_container_width="auto", caption="Lo Shu Grid with Planets", output_format="auto")
 
 if first_name and last_name and dob:
     try:
@@ -228,24 +228,24 @@ if first_name and last_name and dob:
         # Calculate values
         driver = calculate_driver(day)
         conductor = calculate_conductor(dob)
-        kunvar = calculate_kunvar(year, gender)
+        kuaa = calculate_kuaa(year, gender)
 
         if gender == "NA":
-            st.warning("Gender not specified. Kunvar value cannot be calculated. Please provide Male or Female.")
+            st.warning("Gender not specified. kuaa value cannot be calculated. Please provide Male or Female.")
         # Generate Lo Shu Grid
-        grid = generate_lo_shu_grid(dob, driver, conductor, kunvar)
+        grid = generate_lo_shu_grid(dob, driver, conductor, kuaa)
         save_to_sqlite(first_name, last_name, dob, birth_time, place_of_birth, phone_number, gender)
         # Display Full Name
         st.write(f"### Full Name: {full_name}")
 
-        # Display Driver, Conductor, Kunvar
+        # Display Driver, Conductor, kuaa
         st.write(f"### Your Driver Value: {driver}")
         st.write(f"### Your Conductor Value: {conductor}")
-        if kunvar is not None:
-            st.write(f"### Your Kunvar Value: {kunvar}")
+        if kuaa is not None:
+            st.write(f"### Your kuaa Value: {kuaa}")
 
         # Display Lo Shu Grid
-        st.write("### Your Lo Shu Grid Birth Chart:")
+        st.write("### Your Birth Chart Grid:")
         styled_grid = display_color_coded_grid(grid)
         st.markdown(styled_grid.to_html(escape=False, index=False, header=False), unsafe_allow_html=True)
 
@@ -269,7 +269,7 @@ if first_name and last_name and dob:
             {"Attribute": "Gender", "Value": gender},
             {"Attribute": "Driver Value", "Value": driver},
             {"Attribute": "Conductor Value", "Value": conductor},
-            {"Attribute": "Kunvar Value", "Value": kunvar if kunvar is not None else "Not Available"}
+            {"Attribute": "kuaa Value", "Value": kuaa if kuaa is not None else "Not Available"}
         ] + [{"Attribute": f"Number {num}", "Value": count} for num, count in grid.items()])
 
         st.table(final_chart)
@@ -280,12 +280,13 @@ if first_name and last_name and dob:
         </a>
         """, unsafe_allow_html=True)
 
-        # PDF Download Button
-        pdf = generate_pdf(full_name, dob, gender, driver, conductor, kunvar, grid)
+        # PDF Download Button with dynamic file name
+        pdf = generate_pdf(full_name, dob, gender, driver, conductor, kuaa, grid)
+        pdf_file_name = f"{full_name.replace(' ', '_')}_Birth_Chart.pdf"  # Generate dynamic file name
         st.download_button(
             label="Download Your Birth Chart as PDF",
             data=pdf,
-            file_name="lo_shu_grid_birth_chart.pdf",
+            file_name=pdf_file_name,
             mime="application/pdf",
         )
     except ValueError:
