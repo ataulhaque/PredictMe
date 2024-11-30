@@ -77,9 +77,9 @@ def generate_pdf(full_name, chaldean_number, dob, gender, driver, conductor, kua
         ["kuaa Value", kuaa if kuaa is not None else "Not Available"],
     ]
     for num, count in grid.items():
-        data.append([f"Number {num}", count])
+        data.append([f"{num} - {interpretations[num]}", count if count > 0 else "Missing"])
 
-    table = Table(data, colWidths=[200, 200])
+    table = Table(data, colWidths=[300, 100])
     table.setStyle(
         TableStyle(
             [
@@ -202,7 +202,7 @@ def display_color_coded_grid(grid):
     colors = {
         "missing": "background-color: #f8d7da; color: #721c24;",  # Light red for missing numbers
         "repeated": "background-color: #d4edda; color: #155724;",  # Light green for repeated numbers
-        "normal": "",  # Default style
+        "normal": "background-color: #d1ecf1; color: #0c5460;",  # Light blue for normal numbers
     }
     lo_shu_layout = [
         [4, 9, 2],
@@ -219,7 +219,7 @@ def display_color_coded_grid(grid):
                 style = colors["repeated"]
             else:
                 style = colors["normal"]
-            styled_row.append(f'<div style="{style}">{num}: {grid[num]}</div>')
+            styled_row.append(f'<div style="{style}">{num}: ({grid[num]})</div>')
         styled_data.append(styled_row)
     return pd.DataFrame(styled_data)
 ###############################################################################
@@ -324,7 +324,7 @@ if first_name and last_name and dob and birth_time and phone_number:
             st.write(f"**{num} :blue[(Present)]:** {interpretation}")
 
     # Final Birth Chart
-    st.write("### Final Birth Chart:")
+    st.write("### :rainbow[Final Birth Chart:]")
     final_chart = pd.DataFrame([
         {"Attribute": "Full Name", "Value": full_name},
         {"Attribute": "Date of Birth", "Value": dob},
@@ -333,7 +333,7 @@ if first_name and last_name and dob and birth_time and phone_number:
         {"Attribute": "Driver Value", "Value": driver},
         {"Attribute": "Conductor Value", "Value": conductor},
         {"Attribute": "kuaa Value", "Value": kuaa if kuaa is not None else "Not Available"}
-    ] + [{"Attribute": f"Number {num}", "Value": count} for num, count in grid.items()])
+    ] + [{"Attribute": f"{num} - {interpretations[num]}", "Value": count if count > 0 else "Missing"} for num, count in grid.items()])
 
     st.table(final_chart)
     st.info("To consult with an Astrologer/Numerologist, click on 'WhatsApp Chat' button below.")
