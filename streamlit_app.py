@@ -9,6 +9,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 import sqlite3
 from datetime import datetime
 import re
+from control_panel import main as control_panel_main  # Import the control panel app
 
 # Set page configuration
 st.set_page_config(page_title="Get your free Birth Chart", layout="centered", page_icon='🌟')
@@ -49,7 +50,7 @@ def calculate_chaldean_number(name):
     return total_value
 
 # Function to generate and download the PDF
-def generate_pdf(full_name, chaldean_number, dob, gender, driver, conductor, kuaa, grid):
+def generate_pdf(full_name, chaldean_number, dob, gender, driver, conductor, kuaa, grid, interpretations):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
 
@@ -77,7 +78,7 @@ def generate_pdf(full_name, chaldean_number, dob, gender, driver, conductor, kua
         ["kuaa Value", kuaa if kuaa is not None else "Not Available"],
     ]
     for num, count in grid.items():
-        data.append([f"{num} - {interpretations[num]}", count if count > 0 else "Missing"])
+        data.append([f"{num} - {interpretations[num]}", "Missing" if count == 0 else "Available" if count == 1 else f"Repeated {count} times"])
 
     table = Table(data, colWidths=[300, 100])
     table.setStyle(
@@ -120,7 +121,7 @@ def save_to_sqlite(first_name, last_name, dob, birth_time, place_of_birth, phone
             dob TEXT,
             birth_time TEXT,
             place_of_birth TEXT,
-            phone_number TEXT,
+            phone_number TEXT UNIQUE,
             gender TEXT
         )
     ''')
@@ -136,17 +137,19 @@ def save_to_sqlite(first_name, last_name, dob, birth_time, place_of_birth, phone
 
     # Convert birth_time to string format
     #birth_time_str = birth_time.strftime('%H:%M') if birth_time else None
-    birth_time_str = birth_time
+    #birth_time_str = birth_time
 
     # Insert the data into the table
-    cursor.execute('''
-        INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (first_name, last_name, dob, birth_time_str, place_of_birth, phone_number, gender))
+    cursor.execute('SELECT * FROM users WHERE phone_number = ?', (phone_number,))
+    if cursor.fetchone():
+        st.warning("Record already exists for this phone number.")
+    else:
+        cursor.execute('''
+            INSERT OR REPLACE INTO users VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (first_name, last_name, dob, birth_time, place_of_birth, phone_number, gender))
 
     conn.commit()
     conn.close()
-
-    st.success("All input data validated successfully!")
 
 # Function to calculate Driver value
 def calculate_driver(day):
@@ -221,136 +224,179 @@ def display_color_coded_grid(grid):
                 style = colors["normal"]
             styled_row.append(f'<div style="{style}">{num}: ({grid[num]})</div>')
         styled_data.append(styled_row)
-    return pd.DataFrame(styled_data)
+    # Convert styled_data to a DataFrame with custom size
+    df = pd.DataFrame(styled_data)
+    df.style.set_properties(subset=df.columns, **{'background-color': 'white', 'color': 'black', 'border-color': 'black', 'border-width': '1px', 'border-style': 'solid'})
+    df.style.set_properties(subset=df.columns, **{'font-size': '16px', 'font-family': 'Arial'})
+    return df
 ###############################################################################
 ###############################################################################
+def main_app():
 
-# Streamlit App Layout
-st.title("🌟 :orange[Birth Chart Generator] :sunflower: 🌟")
-st.write(":rainbow[Generate your Birth Chart with interpretations and insights!]")
+    # Streamlit App Layout
+    st.title("🌟 :orange[Birth Chart Generator] :sunflower: 🌟")
+    st.write(":rainbow[Generate your Birth Chart with interpretations and insights!]")
 
-# Input: Full Name
-first_name = st.text_input(":blue[Enter your First Name:]", placeholder="e.g., Mohan")
-last_name = st.text_input(":blue[Enter your Last Name:]", placeholder="e.g., Kumar")
+    # Input: Full Name
+    first_name = st.text_input(":blue[Enter your First Name:]", placeholder="e.g., Mohan")
+    last_name = st.text_input(":blue[Enter your Last Name:]", placeholder="e.g., Kumar")
 
-# Input: Date of Birth
-dob = st.text_input(":blue[Enter your Date of Birth (DD-MM-YYYY)]:", placeholder="e.g., 25-11-1987")
-#dob = st.date_input('Enter your Date of Birth',value="default_value_today")
-# Input: Birth Time
-#birth_time = st.time_input('Enter your Birth Time (HH:MM:SS)', value="now" )
-birth_time = st.text_input(":blue[Enter your Birth Time (HH:MM:SS):]", placeholder="e.g., 10:45:00")
+    # Input: Date of Birth
+    dob = st.text_input(":blue[Enter your Date of Birth (DD-MM-YYYY)]:", placeholder="e.g., 25-11-1987")
+    #dob = st.date_input('Enter your Date of Birth',value="default_value_today")
+    # Input: Birth Time
+    #birth_time = st.time_input('Enter your Birth Time (HH:MM:SS)', value="now" )
+    birth_time = st.text_input(":blue[Enter your Birth Time (HH:MM:SS):]", placeholder="e.g., 10:45:00")
 
-#Input: Place of Birth
-place_of_birth = st.text_input(":blue[Enter your Place of Birth (New Delhi, India)]:", placeholder="e.g., New Delhi, India")
+    #Input: Place of Birth
+    place_of_birth = st.text_input(":blue[Enter your Place of Birth (New Delhi, India)]:", placeholder="e.g., New Delhi, India")
 
-#Input: Phone Number
-phone_number = st.text_input(":blue[Enter your Phone Number (+91-9876543210):]", placeholder="e.g., +91-9876543210")
+    #Input: Phone Number
+    phone_number = st.text_input(":blue[Enter your Phone Number (+91-9876543210):]", placeholder="e.g., +91-9876543210")
 
-# Input: Gender
-gender = st.radio("Select your Gender:", ["Male", "Female", "NA"], index=2)
-st.image("data/images/lo-Shu-Grid-Numbers-with-planets.png", use_container_width="auto", caption="Lo Shu Grid with Planets", output_format="auto")
+    # Input: Gender
+    gender = st.radio("Select your Gender:", ["Male", "Female", "NA"], index=2)
+    st.image("data/images/lo-Shu-Grid-Numbers-with-planets.png", use_container_width="auto", caption="Lo Shu Grid with Planets", output_format="auto")
 
-if first_name and last_name and dob and birth_time and phone_number:
-    try:
-        # Validate dob
-        dob_parsed = pd.to_datetime(dob, format="%d-%m-%Y")
-        #st.success("Valid Date of Birth!")
-        # Extract components
-        day = dob_parsed.day
-        month = dob_parsed.month
-        year = dob_parsed.year
+    if first_name and last_name and dob and birth_time and phone_number:
+        try:
+            # Validate dob
+            dob_parsed = pd.to_datetime(dob, format="%d-%m-%Y")
+            #st.success("Valid Date of Birth!")
+            # Extract components
+            day = dob_parsed.day
+            month = dob_parsed.month
+            year = dob_parsed.year
 
-        # Calculate values
-        driver = calculate_driver(day)
-        conductor = calculate_conductor(dob)
-    except ValueError:
-        st.error("Invalid date format. Please enter in DD-MM-YYYY format.")
-    
-    try:
-        #validate birth_time
-        birth_time_parsed = datetime.strptime(birth_time, "%H:%M:%S")
-        #st.success("Valid Birth Time!")
-    except ValueError:
-        st.error("Invalid Birth Time. Please enter in HH:MM:SS format.")
+            # Calculate values
+            driver = calculate_driver(day)
+            conductor = calculate_conductor(dob)
+        except ValueError:
+            st.error("Invalid date format. Please enter in DD-MM-YYYY format.")
+        
+        try:
+            #validate birth_time
+            birth_time_parsed = datetime.strptime(birth_time, "%H:%M:%S")
+            #st.success("Valid Birth Time!")
+        except ValueError:
+            st.error("Invalid Birth Time. Please enter in HH:MM:SS format.")
 
-    #validate phone_number
-    phone_pattern = r"^\+\d+-\d{10}$"  # Regex for +91-9876543210 format
-    if re.match(phone_pattern, phone_number):
-        st.success("Valid Phone Number!")
-    else:
-        st.error("Invalid Phone Number. Please enter in this +91-9876543210 format.")
-
-    # Full Name
-    full_name = f"{first_name} {last_name}"
-    if full_name:
-        chaldean_number = calculate_chaldean_number(full_name)
-    else:
-        st.error("Name required!")
-
-    if gender == "NA":
-        st.warning("Gender not specified. kuaa value cannot be calculated. Please provide Male or Female.")
-    
-    #Calculate Kuaa number
-    kuaa = calculate_kuaa(year, gender)
-
-    # Generate Lo Shu Grid
-    grid = generate_lo_shu_grid(dob, driver, conductor, kuaa)
-    save_to_sqlite(first_name, last_name, dob, birth_time, place_of_birth, phone_number, gender)
-    # Display Full Name
-    st.write(f"#### Full Name: :blue-background[{full_name}] :sunflower:")
-
-    # Display Driver, Conductor, kuaa
-    st.write(f"#### Your Driver Value: :blue-background[{driver}] :hibiscus:")
-    st.write(f"#### Your Conductor Value: :blue-background[{conductor}] :tulip:")
-    if kuaa is not None:
-        st.write(f"#### Your kuaa Value: :blue-background[{kuaa}] :cherry_blossom:")
-    st.write(f"#### Numerology Number for :orange[{full_name}]: :blue-background[{chaldean_number}] :rose:")
-
-    # Display Lo Shu Grid
-    st.write("### :rainbow[Your Birth Chart:]")
-    styled_grid = display_color_coded_grid(grid)
-    st.markdown(styled_grid.to_html(escape=False, index=False, header=False), unsafe_allow_html=True)
-
-    # Interpretations for Individual Numbers
-    st.write("### :rainbow[Interpretation of your Birth Chart Numbers:]")
-    interpretations = number_interpretations()
-    for num, interpretation in interpretations.items():
-        count = grid[num]
-        if count == 0:
-            st.write(f"**{num} :red[(Missing)]:** {interpretation}")
-        elif count > 1:
-            st.write(f"**{num} :green[(Repeated] :blue-background[{count}] times):** {interpretation}")
+        #validate phone_number
+        phone_pattern = r"^\+\d+-\d{10}$"  # Regex for +91-9876543210 format
+        if re.match(phone_pattern, phone_number):
+            st.success("Valid Phone Number!")
         else:
-            st.write(f"**{num} :blue[(Present)]:** {interpretation}")
+            st.error("Invalid Phone Number. Please enter in this +91-9876543210 format.")
 
-    # Final Birth Chart
-    st.write("### :rainbow[Final Birth Chart:]")
-    final_chart = pd.DataFrame([
-        {"Attribute": "Full Name", "Value": full_name},
-        {"Attribute": "Date of Birth", "Value": dob},
-        {"Attribute": "Gender", "Value": gender},
-        {"Attribute": "Numerology Number for name", "Value": chaldean_number},
-        {"Attribute": "Driver Value", "Value": driver},
-        {"Attribute": "Conductor Value", "Value": conductor},
-        {"Attribute": "kuaa Value", "Value": kuaa if kuaa is not None else "Not Available"}
-    ] + [{"Attribute": f"{num} - {interpretations[num]}", "Value": count if count > 0 else "Missing"} for num, count in grid.items()])
+        # Full Name
+        full_name = f"{first_name} {last_name}"
+        if full_name:
+            chaldean_number = calculate_chaldean_number(full_name)
+        else:
+            st.error("Name required!")
 
-    st.table(final_chart)
-    st.info("To consult with an Astrologer/Numerologist, click on 'WhatsApp Chat' button below.")
-    st.markdown("""
-    <a aria-label="Chat on WhatsApp" href="https://wa.me/917205467646?text=Namaste%2C%20I%20need%20to%20consult%20regarding%20my%20Birth%20Chart">
-    <img alt="Chat on WhatsApp" src="https://image.pngaaa.com/326/2798326-middle.png" width="150" height="auto"/>
-    </a><br/><br/>
-    """, unsafe_allow_html=True)
+        if gender == "NA":
+            st.warning("Gender not specified. kuaa value cannot be calculated. Please provide Male or Female.")
+        
+        #Calculate Kuaa number
+        kuaa = calculate_kuaa(year, gender)
 
-    # PDF Download Button with dynamic file name
-    pdf = generate_pdf(full_name, chaldean_number, dob, gender, driver, conductor, kuaa, grid)
-    pdf_file_name = f"{full_name.replace(' ', '_')}_Birth_Chart.pdf"  # Generate dynamic file name
-    st.download_button(
-        label="Download Your Birth Chart as PDF",
-        data=pdf,
-        file_name=pdf_file_name,
-        mime="application/pdf",
-    )
-else:
-    st.info("Please fill out all required fields: Full Name, Date of Birth, and Gender.")
+        # Generate Lo Shu Grid
+        grid = generate_lo_shu_grid(dob, driver, conductor, kuaa)
+
+        if first_name and last_name and dob and birth_time and place_of_birth and gender in ['Male', 'Female'] and phone_number and re.match(phone_pattern, phone_number):
+            save_to_sqlite(first_name, last_name, dob, birth_time, place_of_birth, phone_number, gender)
+            st.success("All input data validated and saved successfully!")
+        else:
+            st.error("Please ensure all fields are filled correctly.")
+        
+        # Display Full Name
+        st.write(f"#### Full Name: :blue-background[{full_name}] :sunflower:")
+        # Display Driver, Conductor, kuaa
+        st.write(f"#### Your Driver Value: :blue-background[{driver}] :hibiscus:")
+        st.write(f"#### Your Conductor Value: :blue-background[{conductor}] :tulip:")
+        if kuaa is not None:
+            st.write(f"#### Your kuaa Value: :blue-background[{kuaa}] :cherry_blossom:")
+        st.write(f"#### Numerology Number for :orange[{full_name}]: :blue-background[{chaldean_number}] :rose:")
+
+        # Display Lo Shu Grid
+        st.write("### :rainbow[Your Birth Chart:]")
+        styled_grid = display_color_coded_grid(grid)
+        st.markdown(styled_grid.to_html(escape=False, index=False, header=False), unsafe_allow_html=True)
+
+        # Interpretations for Individual Numbers
+        st.write("### :rainbow[Interpretation of your Birth Chart Numbers:]")
+        interpretations = number_interpretations()
+        for num, interpretation in interpretations.items():
+            count = grid[num]
+            if count == 0:
+                st.write(f"**{num} :red[(Missing)]:** {interpretation}")
+            elif count > 1:
+                st.write(f"**{num} :green[(Repeated] :blue-background[{count}] times):** {interpretation}")
+            else:
+                st.write(f"**{num} :blue[(Present)]:** {interpretation}")
+
+        # Final Birth Chart
+        # st.write("### :rainbow[Final Birth Chart:]")
+        # final_chart = pd.DataFrame([
+        #     {"Attribute": "Full Name", "Value": full_name},
+        #     {"Attribute": "Date of Birth", "Value": dob},
+        #     {"Attribute": "Gender", "Value": gender},
+        #     {"Attribute": "Numerology Number for name", "Value": chaldean_number},
+        #     {"Attribute": "Driver Value", "Value": driver},
+        #     {"Attribute": "Conductor Value", "Value": conductor},
+        #     {"Attribute": "kuaa Value", "Value": kuaa if kuaa is not None else "Not Available"}
+        # ] + [{"Attribute": f"{num} - {interpretations[num]}", "Value": "Missing" if count == 0 else "Available" if count == 1 else f"Repeated {count} times"} for num, count in grid.items()])
+
+        # st.table(final_chart) 
+        
+        st.info("To consult with an Astrologer/Numerologist, click on 'WhatsApp Chat' button below.")
+        st.markdown("""
+        <a aria-label="Chat on WhatsApp" href="https://wa.me/917205467646?text=Namaste%2C%20I%20need%20to%20consult%20regarding%20my%20Birth%20Chart">
+        <img alt="Chat on WhatsApp" src="https://image.pngaaa.com/326/2798326-middle.png" width="150" height="auto"/>
+        </a><br/><br/>
+        """, unsafe_allow_html=True)
+
+        # PDF Download Button with dynamic file name
+        pdf = generate_pdf(full_name, chaldean_number, dob, gender, driver, conductor, kuaa, grid, interpretations)
+        pdf_file_name = f"{full_name.replace(' ', '_')}_Birth_Chart.pdf"  # Generate dynamic file name
+        st.download_button(
+            label="Download Your Birth Chart as PDF",
+            data=pdf,
+            file_name=pdf_file_name,
+            mime="application/pdf",
+        )
+    else:
+        st.info("Please fill out all required fields: Full Name, Date of Birth, and Gender.")
+
+# Sidebar Navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Main App", "Control Panel"])
+
+if page == "Main App":
+    main_app()
+elif page == "Control Panel":
+    control_panel_main()  # Render the admin control panel
+
+# Footer Section
+st.markdown("""
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css">
+    <link rel="stylesheet" href="data/css/footer.css">
+</head>
+<div class="footer-basic">
+        <footer>
+            <ul class="list-inline">
+                <li class="list-inline-item"><a href="/">Home</a></li>
+                <li class="list-inline-item"><a href="/Services">Services</a></li>
+                <li class="list-inline-item"><a href="/About_Us">About</a></li>
+            </ul>
+            <p class="copyright">Company Name ©2024</p>
+        </footer>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/js/bootstrap.bundle.min.js"></script>
+""", unsafe_allow_html=True)
