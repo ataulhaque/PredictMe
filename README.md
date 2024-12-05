@@ -17,5 +17,5 @@ Simply enter your name, date of birth, and gender to receive your personalized B
 2. Run the app
 
    ```
-   $ streamlit run Birth_Chart.py
+   $ streamlit run streamlit_app.py
    ```
